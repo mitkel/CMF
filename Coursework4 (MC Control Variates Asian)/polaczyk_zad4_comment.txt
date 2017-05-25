@@ -1,0 +1,11 @@
+1. Zgodnie z oczekiwaniami corelacja między ceną opcji azjatyckiej liczącej średnią geometryczną, a ceną takiej samej opcji liczącej średnią arytmetyczną wyniosła 1 zarówno dla średniej geometrycznej liczonej w sposób dyskretny jak i ciągły (obrazują to oba wykresy variance_Disc i variance_Cont). W programie zaimplementowałem mimo to automatyczne znajdowanie optymalnego współczynnika corelacji.
+
+2. Dla n rzędu 10.000 dostajemy wyniki z dokładnością do 4 miejsc po przecinku takie same dla ciągłej i dyskretnej średniej. Ogólniej można zaobserwować w przybliżeniu liniową zależność między dokładnością wyniku, a drobnością podziału 1/n:
+n   abs.err
+100 0.0069
+200 0.0035
+400 0.0017
+800 0.0009
+1600 0.0004
+3200 0.0002
+6400 0.0001

@@ -1,0 +1,5 @@
+Analizując wykresy (wygenerowane przy pomocy obkomentowanego kodu w pliku z zadaniem), dochodzimy do wniosku, że dla wszystkich parametrów:
+a) istnieje cykliczność ze względu na parzystość kroku,
+b) dla coraz większej ilości kroków uzyskujemy coraz wiekszą dokładność.
+Należałoby także oczekiwać, że dokładność będzie maleć dla zbyt dużej liczby kroków, jednak przy symulacjach rozmiaru maksymalnie 10.000 efekt ten nie był zauważalny.
+Gęstość podziału, którą należy ustawić zależy od oczekiwanego przez nas poziomu dokładności wyniku. Dla błędu względnego rzędu 0.1% wystarczy ustawić M ~ 1000 dla Ceny, Gammy i Delty. Dla Thety minimalna wartość M wynosi ~ 3000 (dla tego poziomu dokładności).

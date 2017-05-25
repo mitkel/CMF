@@ -1,0 +1,1 @@
+Analizując odchylenie od wartości prawdziwej dla różnych M, łatwo dojść do wniosku, że tempa zbieżności wynoszą odpowiendio sigma/sqrt(M) oraz (logM)^2/M dla MC i QMC.
