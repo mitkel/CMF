@@ -1,8 +1,0 @@
-Dokładność dla różnych schematów wyniosła:
-
-CN-Nat = {'err:': 0.120147208380636530, 'V': 38.359310388780820, 'Delta': 2.2600795259204989}
-Im-Nat = {'err:': 0.148726117338640050, 'V': 38.330731479822816, 'Delta': 2.2602950997667284}
-CN-Trs = {'err:': 0.089985581865462905, 'V': 38.569443179026919, 'Delta': 2.2378434628538733}
-Im-Trs = {'err:': 0.064109373572136974, 'V': 38.543566970733593, 'Delta': 2.2376555098163977},
-
-gdzie CN = Crank-Nicolson; Im = Implicit; Nat = Natural; Trs = Transformed, V jest ceną opcji, a err błędem bezwzględnym przybliżenia. Powyższe dane wskazują na to, że transformacja zmiennych daje wynik o rząd wielkości lepszy niż zostanie przy zmiennych naturalnych. Jest to wynik, którego należałoby się spodziewać (przy zmiennych naturalnych używamy więcej ilorazów różnicowych i mamy zdecydowanie większy przedział na X), a ponadto (z powodu występowania wyrazów i oraz i^2) macierz trójdiagonalna ma wyrazy różnych rzędów wielkości dla zmiennych naturalnych, co może powodować utratę dokładności.
