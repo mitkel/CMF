@@ -5,7 +5,7 @@ import numpy as np
 class PDE_scheme():
 	def __init__(self, xBound, x, StartingState, tSteps, endingTime, type = 'E', startingTime = 0):
 		self.xBound = xBound
-		self.x = x
+		self.x = np.array(x)
 		self.State = np.array(StartingState)
 		self.xLen = len(x)
 		self.xIncr = (x[-1] - x[1])/(self.xLen-1) #x[0]=xmin is sometimes -infinity
@@ -67,7 +67,7 @@ class HeatEq(PDE_scheme):
 		# forward-backward Gauss elimination
 		self.State[1:-1] = np.array(solve3Diagonal(a,b,c,d))
 
-# Natural variables Black Scholes Equation
+# Natural variables Black Scholes Equation vanilla option
 class Natural_variables_BSEq(PDE_scheme):
 	def __init__(self, xBound, x, StartingState, tSteps, startingTime, endingTime, r, sigma, type = 'CN'):
 		super(Natural_variables_BSEq, self).__init__(xBound, x, StartingState, tSteps, endingTime, type, startingTime)
@@ -104,3 +104,65 @@ class Natural_variables_BSEq(PDE_scheme):
 
 		# forward-backward Gauss elimination
 		self.State[1:-1] = np.array(solve3Diagonal(B, A[1:], C[:-1], d))
+
+# Inversed time American barrier option
+class Inversed_American_BSEq(PDE_scheme):
+	def __init__(self, xBound, x, StartingState, tSteps, startingTime, endingTime, r, sigma, tol, payoffInv, type = 'CN'):
+		super(Inversed_American_BSEq, self).__init__(xBound, x, StartingState, tSteps, endingTime, type, startingTime)
+		self.r = r
+		self.sigma  = sigma
+		self.sigma2 = sigma**2
+		self.tol = tol
+		self.rho = 1/tol
+		self.payoff = payoffInv
+		self.P = np.array([0]*self.xLen)
+
+	def goFwd(self):
+		self.t = self.t + self.tIncr
+		stateOld = self.State
+		stateNew = self.State
+		stateNew[0] = self.xBound(self.x[0], self.t)
+		stateNew[-1] = self.xBound(self.x[-1], self.t)
+		pOld = self.P
+		pNew = self.P
+		actualPayoff = np.array(self.payoff(self.x, self.t))
+
+		gamma = .5 * self.sigma2 * (self.x)**2 / self.xIncr**2
+		beta = [np.array([]), np.array([])]
+		# j = i - 1
+		beta[0] = np.array([(self.sigma2*x-self.r*self.xIncr>0)*(-1) for x in self.x])
+		# j = i + 1
+		beta[1] = np.array([(self.sigma2*x+self.r*self.xIncr>0)*1 +
+							(self.sigma2*x+self.r*self.xIncr<=0)*2
+							for x in self.x])
+		beta = .5* self.r/self.xIncr * self.x * beta
+
+		condition = True
+		while condition:
+
+			RHS = stateOld[1:-1] + \
+				pOld[1:-1] * actualPayoff[1:-1] - \
+				self.theta*self.tIncr*(
+					r*stateOld[1:-1] -
+					# j = i - 1
+					np.array([(c+b)*(y-x) for c,b,x,y in zip(gamma[1:-1], beta[0][1:-1], stateOld[1:-1], stateOld[:-2])]) -
+					# j = i + 1
+					np.array([(c+b)*(y-x) for c,b,x,y in zip(gamma[1:-1], beta[1][1:-1], stateOld[1:-1], stateOld[2:])])
+				)
+			LHS = np.array(np.array([]),np.array([]),np.array([])) #lower-diagonal, diagonal, upper-diagonal
+			LHS[0] = - gamma[2:-1] - beta[0][2:-1]
+			LHS[2] = - gamma[1:-2] - beta[1][1:-2]
+			LHS[1] = 1 + pOld[1:-1]
+			LHS[1][:-1] -= LHS[2]
+			LHS[1][1:] -= LHS[0]
+
+			stateNew[1:-1] = solve3Diagonal(LHS[1], LHS[0], LHS[2], RHS)
+			pOld = pNew
+			pNew = np.array([ (g<v)*self.rho for v,g in zip(stateNew, actualPayoff) ])
+
+			condition = ( np.max([abs(x-y)/max(1,y) for x,y in zip(stateOld,stateNew)]) < tol ) \
+						or ( pNew == pOld )
+
+		# state update
+		self.State = stateNew
+		self.P = pNew
