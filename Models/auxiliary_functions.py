@@ -37,7 +37,3 @@ def powerOption_price(S, K, C, i, r, v, T, type = 'Call'):
 def vanilla_payoff(S, K, type = 'Call'):
 	phi = {'Call':1, 'Put':-1}[type]
 	return np.maximum(phi*(S-K), [0]*len(np.atleast_1d(S)))
-
-S = np.array([10,9,8,4])
-K = np.array([9]*4)
-print(vanilla_payoff(S,K,'Put'))

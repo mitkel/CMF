@@ -3,7 +3,7 @@ import numpy as np
 
 # PDE scheme with Crank-Nicolson, Euler Implicit & Explicit methods
 class PDE_scheme():
-	def __init__(self, xBound, x, StartingState, tSteps, endingTime, type = 'E', startingTime = 0):
+	def __init__(self, xBound, x, StartingState, tSteps, endingTime, type ='CN', startingTime = 0):
 		self.xBound = xBound
 		self.x = np.array(x)
 		self.State = np.array(StartingState)
@@ -118,51 +118,59 @@ class Inversed_American_BSEq(PDE_scheme):
 		self.P = np.array([0]*self.xLen)
 
 	def goFwd(self):
+		# initializing state
 		self.t = self.t + self.tIncr
-		stateOld = self.State
-		stateNew = self.State
-		stateNew[0] = self.xBound(self.x[0], self.t)
-		stateNew[-1] = self.xBound(self.x[-1], self.t)
-		pOld = self.P
-		pNew = self.P
+		stateNew = self.State.copy()
+		pNew = self.P.copy()
+
+		# step vectors
 		actualPayoff = np.array(self.payoff(self.x, self.t))
 
 		gamma = .5 * self.sigma2 * (self.x)**2 / self.xIncr**2
 		beta = [np.array([]), np.array([])]
 		# j = i - 1
-		beta[0] = np.array([(self.sigma2*x-self.r*self.xIncr>0)*(-1) for x in self.x])
+		beta[0] = np.array(self.sigma2*self.x - self.r*self.xIncr > 0) *(-1)
 		# j = i + 1
-		beta[1] = np.array([(self.sigma2*x+self.r*self.xIncr>0)*1 +
-							(self.sigma2*x+self.r*self.xIncr<=0)*2
-							for x in self.x])
-		beta = .5* self.r/self.xIncr * self.x * beta
+		beta[1] = np.array([1]*self.xLen)
+		beta *= .5* self.r/self.xIncr * self.x
 
-		condition = True
-		while condition:
+		steps = 0
+		condition = False
+		while not condition:
+			stateOld = stateNew.copy()
+			pOld = pNew.copy()
 
-			RHS = stateOld[1:-1] + \
-				pOld[1:-1] * actualPayoff[1:-1] - \
-				self.theta*self.tIncr*(
-					r*stateOld[1:-1] -
+			# calculating right hand side of the equation
+			RHS = stateOld[1:-1].copy()
+			RHS -= (1-self.theta)*self.tIncr*(
+					self.r*stateOld[1:-1] -
 					# j = i - 1
 					np.array([(c+b)*(y-x) for c,b,x,y in zip(gamma[1:-1], beta[0][1:-1], stateOld[1:-1], stateOld[:-2])]) -
 					# j = i + 1
 					np.array([(c+b)*(y-x) for c,b,x,y in zip(gamma[1:-1], beta[1][1:-1], stateOld[1:-1], stateOld[2:])])
 				)
-			LHS = np.array(np.array([]),np.array([]),np.array([])) #lower-diagonal, diagonal, upper-diagonal
-			LHS[0] = - gamma[2:-1] - beta[0][2:-1]
-			LHS[2] = - gamma[1:-2] - beta[1][1:-2]
-			LHS[1] = 1 + pOld[1:-1]
-			LHS[1][:-1] -= LHS[2]
-			LHS[1][1:] -= LHS[0]
+			RHS += + pOld[1:-1] * actualPayoff[1:-1]
 
+			# + boundary conditions
+			RHS[0 ] += self.theta*self.tIncr*(gamma[1] + beta[0][1])*self.xBound(self.x[0], self.t)
+			RHS[-1] += self.theta*self.tIncr*(gamma[-2] + beta[1][-2])*self.xBound(self.x[-1], self.t)
+
+			# calculating 3-diagonal matrix from the left hand side of the equation
+			LHS = [[] for _ in range(3)] #lower-diagonal, diagonal, upper-diagonal
+			LHS[0] = -self.theta*self.tIncr * (gamma[2:-1] + beta[0][2:-1])
+			LHS[2] = -self.theta*self.tIncr * (gamma[1:-2] + beta[1][1:-2])
+			LHS[1] = 1. + pOld[1:-1] + self.theta*self.tIncr * self.r
+			LHS[1] += self.theta*self.tIncr * (2*gamma[1:-1] + beta[0][1:-1] + beta[1][1:-1])
+
+			# solving equation and updating state
 			stateNew[1:-1] = solve3Diagonal(LHS[1], LHS[0], LHS[2], RHS)
-			pOld = pNew
-			pNew = np.array([ (g<v)*self.rho for v,g in zip(stateNew, actualPayoff) ])
+			pNew = np.array([ (v<g)*self.rho for v,g in zip(stateNew, actualPayoff) ])
+			pNew = (stateNew<actualPayoff)*self.rho
 
-			condition = ( np.max([abs(x-y)/max(1,y) for x,y in zip(stateOld,stateNew)]) < tol ) \
-						or ( pNew == pOld )
+			condition = ( np.max([abs(x-y)/max(1,abs(y)) for x, y in zip(stateOld[1:-1], stateNew[1:-1])]) < self.tol) or ( np.array_equal(pNew,pOld) )
+			steps += 1
+			# print(steps, np.max([abs(x-y)/max(1,y) for x, y in zip(stateOld[1:-1], stateNew[1:-1])]))
 
 		# state update
-		self.State = stateNew
-		self.P = pNew
+		self.State = stateNew.copy()
+		self.P = pNew.copy()
